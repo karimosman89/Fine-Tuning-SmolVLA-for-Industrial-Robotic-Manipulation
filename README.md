@@ -19,6 +19,10 @@ git clone https://github.com/your-username/smolvla-industrial-robotics.git
 cd smolvla-industrial-robotics
 
 
+
+
+
+
                              smolvla-industrial-robotics/
 
                              ├── configs/
