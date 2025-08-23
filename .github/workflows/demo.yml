@@ -367,7 +367,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: artifacts
-        pattern: *
+        pattern: '*'
         merge-multiple: true
 
     - name: Upload all artifacts
