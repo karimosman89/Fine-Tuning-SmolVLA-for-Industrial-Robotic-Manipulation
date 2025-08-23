@@ -2,13 +2,14 @@
 
 
 smolvla-industrial-robotics/
-                            ├── configs/
-                                        │   
-                                        ├── data_config.yaml
-                                        │   
-                                        ├── model_config.yaml
-                                        │   
-                                        └── train_config.yaml
+
+                             ├── configs/
+                                         │   
+                                         ├── data_config.yaml
+                                         │   
+                                         ├── model_config.yaml
+                                         │   
+                                         └── train_config.yaml
                             ├── data/
                                      │   
                                      ├── synthetic_data_generator.py
