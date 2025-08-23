@@ -126,6 +126,15 @@ jobs:
         use_fp16: false
         EOF
 
+    - name: Upload environment setup
+      uses: actions/upload-artifact@v4
+      with:
+        name: environment-setup
+        path: |
+          models/
+          configs/
+        retention-days: 1
+
   generate-data:
     needs: setup-environment
     runs-on: ubuntu-latest
@@ -133,12 +142,26 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Restore environment
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Restore files
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r data/requirements_synthetic.txt
+        pip install -r training/requirements_train.txt
+        pip install -r inference/requirements_inference.txt
+        pip install -r simulation/requirements_sim.txt
+
+    - name: Download environment setup
       uses: actions/download-artifact@v4
       with:
         name: environment-setup
@@ -161,18 +184,32 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Restore environment
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Restore files
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r data/requirements_synthetic.txt
+        pip install -r training/requirements_train.txt
+        pip install -r inference/requirements_inference.txt
+        pip install -r simulation/requirements_sim.txt
+
+    - name: Download environment setup
       uses: actions/download-artifact@v4
       with:
         name: environment-setup
         path: .
         
-    - name: Restore synthetic data
+    - name: Download synthetic data
       uses: actions/download-artifact@v4
       with:
         name: synthetic-data
@@ -195,18 +232,32 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Restore environment
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
     
-    - name: Restore files
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev
+
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r data/requirements_synthetic.txt
+        pip install -r training/requirements_train.txt
+        pip install -r inference/requirements_inference.txt
+        pip install -r simulation/requirements_sim.txt
+
+    - name: Download environment setup
       uses: actions/download-artifact@v4
       with:
         name: environment-setup
         path: .
         
-    - name: Restore trained model
+    - name: Download trained model
       uses: actions/download-artifact@v4
       with:
         name: trained-model
@@ -270,7 +321,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Restore demo results
+    - name: Download demo results
       uses: actions/download-artifact@v4
       with:
         name: demo-results
@@ -368,21 +419,3 @@ jobs:
         publish_branch: gh-pages
         keep_files: true
         force_orphan: false
-
-  save-artifacts:
-    needs: [setup-environment, generate-data, train-model, run-demo, create-report]
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-        pattern: '*'
-        merge-multiple: true
-
-    - name: Upload all artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: all-demo-artifacts
-        path: artifacts
-        retention-days: 7
