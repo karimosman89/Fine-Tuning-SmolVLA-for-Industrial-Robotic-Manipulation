@@ -215,7 +215,12 @@ jobs:
       with:
         name: synthetic-data
         path: data/synthetic
-
+        
+    - name: Log in to Hugging Face
+      uses: huggingface/login@v0.1
+      with:
+        token: ${{ secrets.HF_TOKEN }}
+        
     - name: Train model
       run: |
         python training/train.py
