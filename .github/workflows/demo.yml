@@ -44,6 +44,7 @@ jobs:
         # Download sample URDF models for demonstration
         wget -O models/simple_robot.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/two_cubes.sdf
         wget -O models/simple_bin.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/plane.urdf
+        wget -O models/plane.obj https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/plane.obj
         # Convert SDF to URDF format for compatibility
         echo '<?xml version="1.0"?>' > models/ur5.urdf
         echo '<robot name="ur5">' >> models/ur5.urdf
