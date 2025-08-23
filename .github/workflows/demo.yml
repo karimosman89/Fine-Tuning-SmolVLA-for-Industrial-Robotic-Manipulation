@@ -42,13 +42,23 @@ jobs:
     - name: Download sample URDF models
       run: |
         # Download sample URDF models for demonstration
-        wget -O models/simple_robot.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/two_cubes.urdf
+        wget -O models/simple_robot.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/two_cubes.sdf
         wget -O models/simple_bin.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/plane.urdf
-        cp models/simple_robot.urdf models/ur5.urdf
+        # Convert SDF to URDF format for compatibility
+        echo '<?xml version="1.0"?>' > models/ur5.urdf
+        echo '<robot name="ur5">' >> models/ur5.urdf
+        echo '  <link name="base_link">' >> models/ur5.urdf
+        echo '    <visual>' >> models/ur5.urdf
+        echo '      <geometry>' >> models/ur5.urdf
+        echo '        <box size="0.1 0.1 0.1"/>' >> models/ur5.urdf
+        echo '      </geometry>' >> models/ur5.urdf
+        echo '    </visual>' >> models/ur5.urdf
+        echo '  </link>' >> models/ur5.urdf
+        echo '</robot>' >> models/ur5.urdf
         cp models/simple_bin.urdf models/bin.urdf
-        cp models/simple_robot.urdf models/bolt.urdf
-        cp models/simple_robot.urdf models/gear.urdf
-        cp models/simple_robot.urdf models/bracket.urdf
+        cp models/ur5.urdf models/bolt.urdf
+        cp models/ur5.urdf models/gear.urdf
+        cp models/ur5.urdf models/bracket.urdf
 
     - name: Create minimal config files
       run: |
