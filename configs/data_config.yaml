@@ -1,0 +1,37 @@
+camera:
+  eye_position: [0.5, -0.5, 0.5]
+  target_position: [0, 0, 0.1]
+  up_vector: [0, 0, 1]
+  fov: 60
+  aspect: 1.0
+  near_val: 0.1
+  far_val: 100
+  width: 224
+  height: 224
+
+objects:
+  - name: "bolt"
+    path: "models/bolt.urdf"
+    variations:
+      color: ["silver", "black", "gold"]
+      size: [0.8, 1.0, 1.2]
+  - name: "gear"
+    path: "models/gear.urdf"
+    variations:
+      color: ["gray", "black"]
+      size: [0.7, 1.0]
+
+locations:
+  - name: "red bin"
+    position: [0.3, 0.3, 0]
+  - name: "conveyor belt"
+    position: [0.4, 0, 0]
+
+command_templates:
+  - "Pick up the {object} and place it on the {location}."
+  - "Grab a {object} and put it in the {location}."
+  - "Move the {object} to the {location}."
+
+num_objects: 5
+num_episodes: 10000
+data_dir: "./data/synthetic"
