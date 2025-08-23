@@ -173,5 +173,5 @@ class SyntheticDataGenerator:
         p.disconnect()
 
 if __name__ == "__main__":
-    generator = SyntheticDataGenerator("../configs/data_config.yaml")
+    generator = SyntheticDataGenerator("configs/data_config.yaml")
     generator.generate_data()
