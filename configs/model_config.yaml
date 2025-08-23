@@ -1,0 +1,7 @@
+model_name: "smolvla-450M"
+image_size: 224
+patch_size: 14
+vision_encoder: "vit"
+text_encoder: "bert"
+action_hidden_size: 256
+max_action_length: 50
