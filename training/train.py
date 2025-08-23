@@ -11,10 +11,10 @@ import yaml
 from dataset import VLADataset
 
 def load_configs():
-    with open('../configs/model_config.yaml', 'r') as f:
+    with open('configs/model_config.yaml', 'r') as f:
         model_config = yaml.safe_load(f)
     
-    with open('../configs/train_config.yaml', 'r') as f:
+    with open('configs/train_config.yaml', 'r') as f:
         train_config = yaml.safe_load(f)
     
     return model_config, train_config
