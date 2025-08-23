@@ -1,7 +1,7 @@
 # Fine-Tuning-SmolVLA-450M-for-Industrial-Robotic-Manipulation
 
 
-  smolvla-industrial-robotics/
+                             smolvla-industrial-robotics/
 
                              ├── configs/
                                          │   
