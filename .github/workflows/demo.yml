@@ -42,8 +42,8 @@ jobs:
     - name: Download sample URDF models
       run: |
         # Download sample URDF models for demonstration
-        wget -O models/simple_robot.urdf https://github.com/bulletphysics/bullet3/tree/master/data/two_cubes.urdf
-        wget -O models/simple_bin.urdf   https://github.com/bulletphysics/bullet3/tree/master/data/plane.urdf
+        wget -O models/simple_robot.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/two_cubes.urdf
+        wget -O models/simple_bin.urdf https://raw.githubusercontent.com/bulletphysics/bullet3/master/data/plane.urdf
         cp models/simple_robot.urdf models/ur5.urdf
         cp models/simple_bin.urdf models/bin.urdf
         cp models/simple_robot.urdf models/bolt.urdf
