@@ -14,8 +14,9 @@ This project fine-tunes the SmolVLA-450M model for industrial bin-picking tasks.
 ## Setup
 
 1. Clone the repository:
+   
 ```bash
-git clone https://github.com/your-username/smolvla-industrial-robotics.git
+git clone https://github.com/karimosman89/smolvla-industrial-robotics.git
 cd smolvla-industrial-robotics
 
 
