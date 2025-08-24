@@ -1,4 +1,4 @@
-model_name: "SmolVLM-250M-it-ja"
+model_name: "lerobot/smolvla_base"
 image_size: 224
 patch_size: 14
 vision_encoder: "vit"
