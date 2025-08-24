@@ -217,9 +217,11 @@ jobs:
         path: data/synthetic
         
     - name: Log in to Hugging Face
-      uses: huggingface/actions/login@v0.1
-      with:
-        token: ${{ secrets.HF_TOKEN }}
+      run: |
+        pip install huggingface_hub
+        huggingface-cli login --token ${{ secrets.HF_TOKEN }}
+      env:
+        HUGGING_FACE_HUB_TOKEN: ${{ secrets.HF_TOKEN }}
         
     - name: Train model
       run: |
