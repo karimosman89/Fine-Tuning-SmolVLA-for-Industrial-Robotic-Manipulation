@@ -1,4 +1,4 @@
-model_name: "smolvla-450M"
+model_name: "SmolVLM-250M-it-ja"
 image_size: 224
 patch_size: 14
 vision_encoder: "vit"
