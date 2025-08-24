@@ -2,7 +2,6 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import (
     AutoTokenizer, 
-    AutoModelForCausalLM, 
     TrainingArguments, 
     Trainer
 )
@@ -20,8 +19,8 @@ def load_configs():
     return model_config, train_config
 
 def setup_model_and_tokenizer(model_config, train_config):
-    # Load model and tokenizer
-    model = AutoModelForCausalLM.from_pretrained(
+    # Load the model using the correct class
+    model = AutoLeRobotModelForPretraining.from_pretrained(
         model_config['model_name'],
         torch_dtype=torch.float16 if train_config.get('use_fp16', False) else torch.float32
     )
