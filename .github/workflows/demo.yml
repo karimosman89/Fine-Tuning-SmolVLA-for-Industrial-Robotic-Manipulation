@@ -104,7 +104,7 @@ jobs:
         EOF
 
         cat > configs/model_config.yaml << 'EOF'
-        model_name: "smolvla-450M"
+        model_name: "lerobot/smolvla_base"
         image_size: 224
         patch_size: 14
         vision_encoder: "vit"
