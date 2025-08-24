@@ -217,7 +217,7 @@ jobs:
         path: data/synthetic
         
     - name: Log in to Hugging Face
-      uses: huggingface/actions/login@v0.1
+      uses: huggingface/hub/actions/login@v0.1
       with:
         token: ${{ secrets.HF_TOKEN }}
         
