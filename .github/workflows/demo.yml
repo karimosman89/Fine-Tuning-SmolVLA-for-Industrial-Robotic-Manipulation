@@ -7,7 +7,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.10'
-  MODEL_NAME: 'smolvla-450M'
+  MODEL_NAME: 'lerobot/smolvla_base'
 
 jobs:
   setup-environment:
