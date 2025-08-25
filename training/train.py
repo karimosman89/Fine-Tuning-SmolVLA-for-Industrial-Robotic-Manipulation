@@ -8,7 +8,7 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 import yaml
 from dataset import VLADataset
-from lerobot.models.auto import AutoLeRobotModelForPretraining
+from lerobot import AutoLeRobotModelForPretraining
 
 def load_configs():
     with open('configs/model_config.yaml', 'r') as f:
