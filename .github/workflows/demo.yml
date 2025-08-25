@@ -198,7 +198,7 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install lerobot
+        pip install git+https://github.com/huggingface/lerobot.git
         pip install -r requirements.txt
         pip install -r data/requirements_synthetic.txt
         pip install -r training/requirements_train.txt
