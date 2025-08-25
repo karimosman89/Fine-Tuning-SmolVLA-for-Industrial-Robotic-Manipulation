@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from transformers import (
-    AutoTokenizer, 
+    AutoProcessor,  # Changed from AutoTokenizer to AutoProcessor
     TrainingArguments, 
     Trainer
 )
@@ -42,7 +42,9 @@ def setup_model_and_tokenizer(model_config, train_config):
     if train_config.get('use_fp16', False):
         model = model.half()
     
-    tokenizer = AutoTokenizer.from_pretrained(model_config['model_name'])
+    # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
+    processor = AutoProcessor.from_pretrained(model.config.vlm_model_name)
+    tokenizer = processor.tokenizer
     
     # Add special tokens for actions
     action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
