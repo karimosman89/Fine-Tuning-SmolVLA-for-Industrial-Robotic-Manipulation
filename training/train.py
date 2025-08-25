@@ -122,7 +122,7 @@ def main():
         learning_rate=float(train_config['learning_rate']),
         warmup_steps=train_config['warmup_steps'],
         logging_steps=train_config['logging_steps'],
-        save_steps=train_config['save_steps'],
+        save_steps=500,  
         eval_strategy="steps",
         eval_steps=500,
         save_total_limit=2,
