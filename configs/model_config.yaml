@@ -1,4 +1,5 @@
 model_name: "lerobot/smolvla_base"
+vlm_model_name: "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
 image_size: 224
 patch_size: 14
 vision_encoder: "vit"
