@@ -22,17 +22,16 @@ def load_configs():
 def setup_model_and_tokenizer(model_config, train_config):
     # Load the model using the correct class
     model = SmolVLAPolicy.from_pretrained(
-        model_config['model_name'],
-        torch_dtype=torch.float16 if train_config.get('use_fp16', False) else torch.float32
+        model_config['model_name']
     )
-
+    
     tokenizer = AutoTokenizer.from_pretrained(model_config['model_name'])
-
+    
     # Add special tokens for actions
     action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
     tokenizer.add_tokens(action_tokens, special_tokens=True)
     model.resize_token_embeddings(len(tokenizer))
-
+    
     # Setup PEFT if enabled
     if train_config.get('use_peft', False):
         peft_config = LoraConfig(
@@ -45,7 +44,7 @@ def setup_model_and_tokenizer(model_config, train_config):
         )
         model = get_peft_model(model, peft_config)
         model.print_trainable_parameters()
-
+    
     return model, tokenizer
 
 def main():
