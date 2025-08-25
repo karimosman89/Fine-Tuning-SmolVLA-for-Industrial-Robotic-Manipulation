@@ -42,7 +42,9 @@ def load_configs():
 
 def setup_model_and_tokenizer(model_config, train_config):
     # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
-    processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
+    # Add fallback for vlm_model_name
+    vlm_model_name = model_config.get('vlm_model_name', 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct')
+    processor = AutoProcessor.from_pretrained(vlm_model_name)
     tokenizer = processor.tokenizer
     
     # Add special tokens for actions
@@ -145,8 +147,9 @@ def main():
         model_config, train_config = load_configs()
         os.makedirs(train_config['output_dir'], exist_ok=True)
         
-        # First, set up tokenizer only
-        processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
+        # First, set up tokenizer only with fallback for vlm_model_name
+        vlm_model_name = model_config.get('vlm_model_name', 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct')
+        processor = AutoProcessor.from_pretrained(vlm_model_name)
         tokenizer = processor.tokenizer
         
         # Add special tokens for actions
@@ -247,9 +250,11 @@ def main():
         import traceback
         traceback.print_exc()
         # Save a dummy file to indicate failure
-        with open(f"{train_config['output_dir']}/error.txt", "w") as f:
-            f.write(f"Error: {e}\n")
-            f.write(traceback.format_exc())
+        if 'train_config' in locals():
+            os.makedirs(train_config['output_dir'], exist_ok=True)
+            with open(f"{train_config['output_dir']}/error.txt", "w") as f:
+                f.write(f"Error: {e}\n")
+                f.write(traceback.format_exc())
         raise e
 
 if __name__ == "__main__":
