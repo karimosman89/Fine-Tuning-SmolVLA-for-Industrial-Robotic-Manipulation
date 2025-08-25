@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from transformers import (
-    AutoProcessor,  # Changed from AutoTokenizer to AutoProcessor
+    AutoProcessor,
     TrainingArguments, 
     Trainer
 )
@@ -56,8 +56,16 @@ def setup_model_and_tokenizer(model_config, train_config):
     elif hasattr(model, 'model') and hasattr(model.model, 'resize_token_embeddings'):
         model.model.resize_token_embeddings(len(tokenizer))
     
-    # Setup PEFT if enabled
+    # Setup PEFT if enabled - with a workaround for SmolVLAConfig compatibility
     if train_config.get('use_peft', False):
+        # Add a get method to the config to make it compatible with PEFT
+        if not hasattr(model.config, 'get'):
+            model.config.get = lambda key, default=None: getattr(model.config, key, default) if hasattr(model.config, key) else default
+        
+        # Ensure tie_word_embeddings is set
+        if not hasattr(model.config, 'tie_word_embeddings'):
+            model.config.tie_word_embeddings = False
+            
         peft_config = LoraConfig(
             r=train_config.get('lora_rank', 16),
             lora_alpha=32,
@@ -66,8 +74,13 @@ def setup_model_and_tokenizer(model_config, train_config):
             bias="none",
             task_type="CAUSAL_LM"
         )
-        model = get_peft_model(model, peft_config)
-        model.print_trainable_parameters()
+        
+        try:
+            model = get_peft_model(model, peft_config)
+            model.print_trainable_parameters()
+        except Exception as e:
+            print(f"PEFT initialization failed: {e}. Continuing without PEFT.")
+            train_config['use_peft'] = False
     
     return model, tokenizer
 
