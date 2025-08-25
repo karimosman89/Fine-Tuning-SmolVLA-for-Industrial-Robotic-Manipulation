@@ -20,13 +20,15 @@ def load_configs():
     return model_config, train_config
 
 def setup_model_and_tokenizer(model_config, train_config):
-    # Load the model using the correct class
+    # Load the model directly. The SmolVLAPolicy handles its own tokenizer.
     model = SmolVLAPolicy.from_pretrained(
-        model_config['model_name']
+        model_config['model_name'],
+        torch_dtype=torch.float16 if train_config.get('use_fp16', False) else torch.float32
     )
     
-    tokenizer = AutoTokenizer.from_pretrained(model_config['model_name'])
-    
+    # Use the tokenizer from the loaded model instance
+    tokenizer = model.language_tokenizer
+
     # Add special tokens for actions
     action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
     tokenizer.add_tokens(action_tokens, special_tokens=True)
