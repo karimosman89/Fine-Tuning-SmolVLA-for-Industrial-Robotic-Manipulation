@@ -71,24 +71,29 @@ def compute_dataset_stats(dataset, num_samples=1000):
             # Skip samples that cause errors
             continue
     
-    # Compute statistics
+    # Compute statistics with keys that match what SmolVLA expects
     stats = {}
     if pixel_values:
         pixel_values = np.stack(pixel_values)
-        stats['pixel_values'] = {
+        # SmolVLA expects these keys for images
+        stats['observation.image'] = {
             'mean': np.mean(pixel_values, axis=(0, 2, 3)),
             'std': np.std(pixel_values, axis=(0, 2, 3))
         }
+        stats['observation.image2'] = stats['observation.image'].copy()
+        stats['observation.image3'] = stats['observation.image'].copy()
     
     if states:
         states = np.stack(states)
-        stats['state'] = {
+        # SmolVLA expects this key for state
+        stats['observation.state'] = {
             'mean': np.mean(states, axis=0),
             'std': np.std(states, axis=0)
         }
     
     if actions:
         actions = np.stack(actions)
+        # SmolVLA expects this key for action
         stats['action'] = {
             'mean': np.mean(actions, axis=0),
             'std': np.std(actions, axis=0)
