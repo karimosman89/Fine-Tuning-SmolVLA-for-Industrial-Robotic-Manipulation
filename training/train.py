@@ -9,6 +9,10 @@ from peft import LoraConfig, get_peft_model
 import yaml
 from dataset import VLADataset
 import dataclasses
+import os
+
+# Disable wandb in CI environment
+os.environ["WANDB_DISABLED"] = "true"
 
 # Updated import based on the new lerobot structure
 try:
@@ -120,7 +124,7 @@ def main():
         dataset, [train_size, val_size]
     )
     
-    # Training arguments - updated to fix the save_steps/eval_steps issue
+    # Training arguments - disable wandb logging
     training_args = TrainingArguments(
         output_dir=train_config['output_dir'],
         num_train_epochs=train_config['num_epochs'],
@@ -129,8 +133,7 @@ def main():
         learning_rate=float(train_config['learning_rate']),
         warmup_steps=train_config['warmup_steps'],
         logging_steps=train_config['logging_steps'],
-        # Make save_steps a multiple of eval_steps
-        save_steps=500,  
+        save_steps=500,
         eval_strategy="steps",
         eval_steps=500,
         save_total_limit=2,
@@ -140,6 +143,8 @@ def main():
         fp16=train_config.get('use_fp16', False),
         dataloader_pin_memory=False,
         remove_unused_columns=False,
+        # Disable wandb logging
+        report_to=[],  # Empty list disables all logging integrations
     )
     
     # Create trainer
