@@ -40,63 +40,7 @@ def load_configs():
     
     return model_config, train_config
 
-def compute_dataset_stats(dataset, num_samples=1000):
-    """Compute mean and std for dataset normalization without using tokenizer"""
-    # Sample random indices from the dataset
-    indices = np.random.choice(len(dataset), min(num_samples, len(dataset)), replace=False)
-    
-    # Initialize lists to collect data
-    pixel_values = []
-    states = []
-    actions = []
-    
-    # Collect data from sampled indices - use raw data access if available
-    for idx in indices:
-        # Try to access raw data without tokenization
-        try:
-            # If the dataset has a method to get raw data, use it
-            if hasattr(dataset, 'get_raw_data'):
-                sample = dataset.get_raw_data(idx)
-            else:
-                # Otherwise, try to access the underlying data
-                sample = dataset.dataset[idx] if hasattr(dataset, 'dataset') else dataset[idx]
-            
-            if 'pixel_values' in sample:
-                pixel_values.append(sample['pixel_values'].numpy())
-            if 'state' in sample:
-                states.append(sample['state'].numpy())
-            if 'action' in sample:
-                actions.append(sample['action'].numpy())
-        except:
-            # Skip samples that cause errors
-            continue
-    
-    # Compute statistics
-    stats = {}
-    if pixel_values:
-        pixel_values = np.stack(pixel_values)
-        stats['pixel_values'] = {
-            'mean': np.mean(pixel_values, axis=(0, 2, 3)),
-            'std': np.std(pixel_values, axis=(0, 2, 3))
-        }
-    
-    if states:
-        states = np.stack(states)
-        stats['state'] = {
-            'mean': np.mean(states, axis=0),
-            'std': np.std(states, axis=0)
-        }
-    
-    if actions:
-        actions = np.stack(actions)
-        stats['action'] = {
-            'mean': np.mean(actions, axis=0),
-            'std': np.std(actions, axis=0)
-        }
-    
-    return stats
-
-def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
+def setup_model_and_tokenizer(model_config, train_config):
     # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
     processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
     tokenizer = processor.tokenizer
@@ -196,105 +140,117 @@ def convert_batch_format(batch, tokenizer):
     return new_batch
 
 def main():
-    # Load configs
-    model_config, train_config = load_configs()
-    os.makedirs(train_config['output_dir'], exist_ok=True)
-    # First, set up tokenizer only
-    processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
-    tokenizer = processor.tokenizer
-    
-    # Add special tokens for actions
-    action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
-    tokenizer.add_tokens(action_tokens, special_tokens=True)
-    
-    # Create dataset with tokenizer
-    dataset = VLADataset(
-        data_path=train_config['data_path'],
-        tokenizer=tokenizer,
-        image_size=model_config['image_size']
-    )
-    
-    # Compute dataset statistics for normalization
-    dataset_stats = compute_dataset_stats(dataset)
-    
-    # Now set up the model with the dataset statistics
-    model, _ = setup_model_and_tokenizer(model_config, train_config, dataset_stats)
-    
-    # Split dataset
-    train_size = int(0.9 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = torch.utils.data.random_split(
-        dataset, [train_size, val_size]
-    )
-    
-    # Create dataloaders
-    train_dataloader = DataLoader(
-        train_dataset, 
-        batch_size=train_config['batch_size'],
-        shuffle=True
-    )
-    
-    val_dataloader = DataLoader(
-        val_dataset,
-        batch_size=train_config['batch_size'],
-        shuffle=False
-    )
-    
-    # Setup optimizer and scheduler
-    optimizer = AdamW(
-        model.parameters(),
-        lr=float(train_config['learning_rate']),
-        weight_decay=0.01
-    )
-    
-    scheduler = CosineAnnealingLR(
-        optimizer,
-        T_max=train_config['num_epochs'] * len(train_dataloader)
-    )
-    
-    # Training loop
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.train()
-    
-    for epoch in range(train_config['num_epochs']):
-        total_loss = 0
-        progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
+    try:
+        # Load configs
+        model_config, train_config = load_configs()
+        os.makedirs(train_config['output_dir'], exist_ok=True)
         
-        for batch_idx, batch in enumerate(progress_bar):
-            # Move batch to device and convert format
-            batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
-            batch = convert_batch_format(batch, tokenizer)
-            
-            # Forward pass
-            optimizer.zero_grad()
-            loss, _ = model(batch)
-            
-            # Backward pass
-            loss.backward()
-            optimizer.step()
-            scheduler.step()
-            
-            total_loss += loss.item()
-            progress_bar.set_postfix({"loss": loss.item()})
-            
-            # Logging
-            if batch_idx % train_config['logging_steps'] == 0:
-                print(f"Epoch {epoch+1}, Batch {batch_idx}, Loss: {loss.item()}")
-            
-            # Save checkpoint
-            if batch_idx % train_config['save_steps'] == 0:
-                checkpoint_dir = f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}"
-                os.makedirs(checkpoint_dir, exist_ok=True)  
-                model.save_pretrained(checkpoint_dir)
-                tokenizer.save_pretrained(checkpoint_dir)
+        # First, set up tokenizer only
+        processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
+        tokenizer = processor.tokenizer
         
-        # Print epoch summary
-        avg_loss = total_loss / len(train_dataloader)
-        print(f"Epoch {epoch+1} completed. Average Loss: {avg_loss}")
-    
-    # Save final model
-    os.makedirs(train_config['output_dir'], exist_ok=True)
-    model.save_pretrained(train_config['output_dir'])
-    tokenizer.save_pretrained(train_config['output_dir'])
+        # Add special tokens for actions
+        action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
+        tokenizer.add_tokens(action_tokens, special_tokens=True)
+        
+        # Create dataset with tokenizer
+        dataset = VLADataset(
+            data_path=train_config['data_path'],
+            tokenizer=tokenizer,
+            image_size=model_config['image_size']
+        )
+        
+        # Now set up the model
+        model, _ = setup_model_and_tokenizer(model_config, train_config)
+        
+        # Split dataset
+        train_size = int(0.9 * len(dataset))
+        val_size = len(dataset) - train_size
+        train_dataset, val_dataset = torch.utils.data.random_split(
+            dataset, [train_size, val_size]
+        )
+        
+        # Create dataloaders
+        train_dataloader = DataLoader(
+            train_dataset, 
+            batch_size=train_config['batch_size'],
+            shuffle=True
+        )
+        
+        val_dataloader = DataLoader(
+            val_dataset,
+            batch_size=train_config['batch_size'],
+            shuffle=False
+        )
+        
+        # Setup optimizer and scheduler
+        optimizer = AdamW(
+            model.parameters(),
+            lr=float(train_config['learning_rate']),
+            weight_decay=0.01
+        )
+        
+        scheduler = CosineAnnealingLR(
+            optimizer,
+            T_max=train_config['num_epochs'] * len(train_dataloader)
+        )
+        
+        # Training loop
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        model.train()
+        
+        for epoch in range(train_config['num_epochs']):
+            total_loss = 0
+            progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
+            
+            for batch_idx, batch in enumerate(progress_bar):
+                # Move batch to device and convert format
+                batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+                batch = convert_batch_format(batch, tokenizer)
+                
+                # Forward pass
+                optimizer.zero_grad()
+                loss, _ = model(batch)
+                
+                # Backward pass
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+                
+                total_loss += loss.item()
+                progress_bar.set_postfix({"loss": loss.item()})
+                
+                # Logging
+                if batch_idx % train_config['logging_steps'] == 0:
+                    print(f"Epoch {epoch+1}, Batch {batch_idx}, Loss: {loss.item()}")
+                
+                # Save checkpoint
+                if batch_idx % train_config['save_steps'] == 0:
+                    checkpoint_dir = f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}"
+                    os.makedirs(checkpoint_dir, exist_ok=True)  
+                    model.save_pretrained(checkpoint_dir)
+                    tokenizer.save_pretrained(checkpoint_dir)
+            
+            # Print epoch summary
+            avg_loss = total_loss / len(train_dataloader)
+            print(f"Epoch {epoch+1} completed. Average Loss: {avg_loss}")
+        
+        # Save final model
+        os.makedirs(train_config['output_dir'], exist_ok=True)
+        model.save_pretrained(train_config['output_dir'])
+        tokenizer.save_pretrained(train_config['output_dir'])
+        print("Training completed successfully!")
+        
+    except Exception as e:
+        print(f"Error during training: {e}")
+        import traceback
+        traceback.print_exc()
+        # Save a dummy file to indicate failure
+        with open(f"{train_config['output_dir']}/error.txt", "w") as f:
+            f.write(f"Error: {e}\n")
+            f.write(traceback.format_exc())
+        raise e
 
+if __name__ == "__main__":
+    main()
