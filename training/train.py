@@ -8,7 +8,7 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 import yaml
 from dataset import VLADataset
-from lerobot.policies.smolvla.smolvla_policy import SmolVLAPolicy
+from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
 
 def load_configs():
     with open('configs/model_config.yaml', 'r') as f:
