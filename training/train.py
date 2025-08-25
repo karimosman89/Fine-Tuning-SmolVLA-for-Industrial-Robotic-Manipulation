@@ -102,22 +102,40 @@ def setup_model_and_tokenizer(model_config, train_config):
     
     return model, tokenizer
 
-def custom_collate_fn(batch):
+def convert_batch_format(batch):
     """
-    Custom collate function to handle the SmolVLA input format.
-    The model expects a dictionary with specific keys, not standard Hugging Face format.
+    Convert the batch from standard format to SmolVLA format.
+    Standard format: {'pixel_values', 'input_ids', 'attention_mask'}
+    SmolVLA format: {'observation.image', 'observation.image2', 'observation.image3', 'task', 'observation.state'}
     """
-    # Convert list of dicts to dict of lists
-    batch_dict = {}
-    for key in batch[0].keys():
-        batch_dict[key] = [item[key] for item in batch]
+    # Create a new batch in SmolVLA format
+    new_batch = {}
     
-    # Convert lists to tensors
-    for key in batch_dict:
-        if isinstance(batch_dict[key][0], torch.Tensor):
-            batch_dict[key] = torch.stack(batch_dict[key])
+    # Convert images - use the same image for all three image fields
+    if 'pixel_values' in batch:
+        new_batch['observation.image'] = batch['pixel_values']
+        new_batch['observation.image2'] = batch['pixel_values']
+        new_batch['observation.image3'] = batch['pixel_values']
     
-    return batch_dict
+    # Convert text - use input_ids to reconstruct task text
+    if 'input_ids' in batch:
+        # This is a simplified approach - you might need to adjust based on your tokenizer
+        task_texts = []
+        for input_ids in batch['input_ids']:
+            # Decode the input_ids to get the original text
+            text = tokenizer.decode(input_ids, skip_special_tokens=True)
+            task_texts.append(text)
+        new_batch['task'] = task_texts
+    
+    # Add state if available (you might need to modify this based on your dataset)
+    if 'state' in batch:
+        new_batch['observation.state'] = batch['state']
+    else:
+        # Create a dummy state if not available
+        batch_size = batch['pixel_values'].shape[0]
+        new_batch['observation.state'] = torch.zeros(batch_size, 7)  # Adjust size as needed
+    
+    return new_batch
 
 def main():
     # Load configs
@@ -140,19 +158,17 @@ def main():
         dataset, [train_size, val_size]
     )
     
-    # Create dataloaders with custom collate function
+    # Create dataloaders
     train_dataloader = DataLoader(
         train_dataset, 
         batch_size=train_config['batch_size'],
-        shuffle=True,
-        collate_fn=custom_collate_fn
+        shuffle=True
     )
     
     val_dataloader = DataLoader(
         val_dataset,
         batch_size=train_config['batch_size'],
-        shuffle=False,
-        collate_fn=custom_collate_fn
+        shuffle=False
     )
     
     # Setup optimizer and scheduler
@@ -177,8 +193,9 @@ def main():
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
         
         for batch_idx, batch in enumerate(progress_bar):
-            # Move batch to device
+            # Move batch to device and convert format
             batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+            batch = convert_batch_format(batch)
             
             # Forward pass
             optimizer.zero_grad()
