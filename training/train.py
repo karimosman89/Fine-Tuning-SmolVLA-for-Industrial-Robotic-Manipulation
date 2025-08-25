@@ -41,7 +41,7 @@ def load_configs():
     return model_config, train_config
 
 def compute_dataset_stats(dataset, num_samples=1000):
-    """Compute mean and std for dataset normalization"""
+    """Compute mean and std for dataset normalization without using tokenizer"""
     # Sample random indices from the dataset
     indices = np.random.choice(len(dataset), min(num_samples, len(dataset)), replace=False)
     
@@ -50,15 +50,26 @@ def compute_dataset_stats(dataset, num_samples=1000):
     states = []
     actions = []
     
-    # Collect data from sampled indices
+    # Collect data from sampled indices - use raw data access if available
     for idx in indices:
-        sample = dataset[idx]
-        if 'pixel_values' in sample:
-            pixel_values.append(sample['pixel_values'].numpy())
-        if 'state' in sample:
-            states.append(sample['state'].numpy())
-        if 'action' in sample:
-            actions.append(sample['action'].numpy())
+        # Try to access raw data without tokenization
+        try:
+            # If the dataset has a method to get raw data, use it
+            if hasattr(dataset, 'get_raw_data'):
+                sample = dataset.get_raw_data(idx)
+            else:
+                # Otherwise, try to access the underlying data
+                sample = dataset.dataset[idx] if hasattr(dataset, 'dataset') else dataset[idx]
+            
+            if 'pixel_values' in sample:
+                pixel_values.append(sample['pixel_values'].numpy())
+            if 'state' in sample:
+                states.append(sample['state'].numpy())
+            if 'action' in sample:
+                actions.append(sample['action'].numpy())
+        except:
+            # Skip samples that cause errors
+            continue
     
     # Compute statistics
     stats = {}
@@ -86,6 +97,14 @@ def compute_dataset_stats(dataset, num_samples=1000):
     return stats
 
 def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
+    # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
+    processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
+    tokenizer = processor.tokenizer
+    
+    # Add special tokens for actions
+    action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
+    tokenizer.add_tokens(action_tokens, special_tokens=True)
+    
     # Load the model using the correct class
     model = SmolVLAPolicy.from_pretrained(model_config['model_name'])
     
@@ -98,14 +117,6 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
     # Set dtype after loading if needed
     if train_config.get('use_fp16', False):
         model = model.half()
-    
-    # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
-    processor = AutoProcessor.from_pretrained(model.config.vlm_model_name)
-    tokenizer = processor.tokenizer
-    
-    # Add special tokens for actions
-    action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
-    tokenizer.add_tokens(action_tokens, special_tokens=True)
     
     # Check if the model has a resize_token_embeddings method
     if hasattr(model, 'resize_token_embeddings'):
@@ -188,21 +199,26 @@ def main():
     # Load configs
     model_config, train_config = load_configs()
     
-    # Create dataset first to compute statistics
+    # First, set up tokenizer only
+    processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
+    tokenizer = processor.tokenizer
+    
+    # Add special tokens for actions
+    action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
+    tokenizer.add_tokens(action_tokens, special_tokens=True)
+    
+    # Create dataset with tokenizer
     dataset = VLADataset(
         data_path=train_config['data_path'],
-        tokenizer=None,  # We'll set this later
+        tokenizer=tokenizer,
         image_size=model_config['image_size']
     )
     
     # Compute dataset statistics for normalization
     dataset_stats = compute_dataset_stats(dataset)
     
-    # Setup model and tokenizer with dataset statistics
-    model, tokenizer = setup_model_and_tokenizer(model_config, train_config, dataset_stats)
-    
-    # Update dataset with tokenizer
-    dataset.tokenizer = tokenizer
+    # Now set up the model with the dataset statistics
+    model, _ = setup_model_and_tokenizer(model_config, train_config, dataset_stats)
     
     # Split dataset
     train_size = int(0.9 * len(dataset))
@@ -279,5 +295,3 @@ def main():
     model.save_pretrained(train_config['output_dir'])
     tokenizer.save_pretrained(train_config['output_dir'])
 
-if __name__ == "__main__":
-    main()
