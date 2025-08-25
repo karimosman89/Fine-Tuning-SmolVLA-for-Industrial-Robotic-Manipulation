@@ -123,7 +123,7 @@ def main():
         warmup_steps=train_config['warmup_steps'],
         logging_steps=train_config['logging_steps'],
         save_steps=train_config['save_steps'],
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=500,
         save_total_limit=2,
         load_best_model_at_end=True,
