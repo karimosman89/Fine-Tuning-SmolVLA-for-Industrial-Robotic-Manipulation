@@ -9,6 +9,7 @@ import os
 from tqdm import tqdm
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
+import numpy as np
 
 # Disable wandb in CI environment
 os.environ["WANDB_DISABLED"] = "true"
@@ -16,6 +17,7 @@ os.environ["WANDB_DISABLED"] = "true"
 # Updated import based on the new lerobot structure
 try:
     from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
+    from lerobot.policies.normalize import Normalize, Unnormalize
 except ImportError:
     # Fallback import if the structure changes
     try:
@@ -38,7 +40,52 @@ def load_configs():
     
     return model_config, train_config
 
-def setup_model_and_tokenizer(model_config, train_config):
+def compute_dataset_stats(dataset, num_samples=1000):
+    """Compute mean and std for dataset normalization"""
+    # Sample random indices from the dataset
+    indices = np.random.choice(len(dataset), min(num_samples, len(dataset)), replace=False)
+    
+    # Initialize lists to collect data
+    pixel_values = []
+    states = []
+    actions = []
+    
+    # Collect data from sampled indices
+    for idx in indices:
+        sample = dataset[idx]
+        if 'pixel_values' in sample:
+            pixel_values.append(sample['pixel_values'].numpy())
+        if 'state' in sample:
+            states.append(sample['state'].numpy())
+        if 'action' in sample:
+            actions.append(sample['action'].numpy())
+    
+    # Compute statistics
+    stats = {}
+    if pixel_values:
+        pixel_values = np.stack(pixel_values)
+        stats['pixel_values'] = {
+            'mean': np.mean(pixel_values, axis=(0, 2, 3)),
+            'std': np.std(pixel_values, axis=(0, 2, 3))
+        }
+    
+    if states:
+        states = np.stack(states)
+        stats['state'] = {
+            'mean': np.mean(states, axis=0),
+            'std': np.std(states, axis=0)
+        }
+    
+    if actions:
+        actions = np.stack(actions)
+        stats['action'] = {
+            'mean': np.mean(actions, axis=0),
+            'std': np.std(actions, axis=0)
+        }
+    
+    return stats
+
+def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
     # Load the model using the correct class
     model = SmolVLAPolicy.from_pretrained(model_config['model_name'])
     
@@ -127,7 +174,7 @@ def convert_batch_format(batch, tokenizer):
             task_texts.append(text)
         new_batch['task'] = task_texts
     
-   
+    # Add state if available (you might need to modify this based on your dataset)
     if 'state' in batch:
         new_batch['observation.state'] = batch['state']
     else:
@@ -141,15 +188,21 @@ def main():
     # Load configs
     model_config, train_config = load_configs()
     
-    # Setup model and tokenizer
-    model, tokenizer = setup_model_and_tokenizer(model_config, train_config)
-    
-    # Create dataset and dataloader
+    # Create dataset first to compute statistics
     dataset = VLADataset(
         data_path=train_config['data_path'],
-        tokenizer=tokenizer,
+        tokenizer=None,  # We'll set this later
         image_size=model_config['image_size']
     )
+    
+    # Compute dataset statistics for normalization
+    dataset_stats = compute_dataset_stats(dataset)
+    
+    # Setup model and tokenizer with dataset statistics
+    model, tokenizer = setup_model_and_tokenizer(model_config, train_config, dataset_stats)
+    
+    # Update dataset with tokenizer
+    dataset.tokenizer = tokenizer
     
     # Split dataset
     train_size = int(0.9 * len(dataset))
