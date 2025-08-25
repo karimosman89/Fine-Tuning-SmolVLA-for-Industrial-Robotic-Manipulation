@@ -198,7 +198,7 @@ def convert_batch_format(batch, tokenizer):
 def main():
     # Load configs
     model_config, train_config = load_configs()
-    
+    os.makedirs(train_config['output_dir'], exist_ok=True)
     # First, set up tokenizer only
     processor = AutoProcessor.from_pretrained(model_config['vlm_model_name'])
     tokenizer = processor.tokenizer
@@ -284,14 +284,17 @@ def main():
             
             # Save checkpoint
             if batch_idx % train_config['save_steps'] == 0:
-                model.save_pretrained(f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}")
-                tokenizer.save_pretrained(f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}")
+                checkpoint_dir = f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}"
+                os.makedirs(checkpoint_dir, exist_ok=True)  
+                model.save_pretrained(checkpoint_dir)
+                tokenizer.save_pretrained(checkpoint_dir)
         
         # Print epoch summary
         avg_loss = total_loss / len(train_dataloader)
         print(f"Epoch {epoch+1} completed. Average Loss: {avg_loss}")
     
     # Save final model
+    os.makedirs(train_config['output_dir'], exist_ok=True)
     model.save_pretrained(train_config['output_dir'])
     tokenizer.save_pretrained(train_config['output_dir'])
 
