@@ -1,15 +1,14 @@
 import torch
 from torch.utils.data import DataLoader
-from transformers import (
-    AutoProcessor,
-    TrainingArguments, 
-    Trainer
-)
+from transformers import AutoProcessor
 from peft import LoraConfig, get_peft_model
 import yaml
 from dataset import VLADataset
 import dataclasses
 import os
+from tqdm import tqdm
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 # Disable wandb in CI environment
 os.environ["WANDB_DISABLED"] = "true"
@@ -103,6 +102,23 @@ def setup_model_and_tokenizer(model_config, train_config):
     
     return model, tokenizer
 
+def custom_collate_fn(batch):
+    """
+    Custom collate function to handle the SmolVLA input format.
+    The model expects a dictionary with specific keys, not standard Hugging Face format.
+    """
+    # Convert list of dicts to dict of lists
+    batch_dict = {}
+    for key in batch[0].keys():
+        batch_dict[key] = [item[key] for item in batch]
+    
+    # Convert lists to tensors
+    for key in batch_dict:
+        if isinstance(batch_dict[key][0], torch.Tensor):
+            batch_dict[key] = torch.stack(batch_dict[key])
+    
+    return batch_dict
+
 def main():
     # Load configs
     model_config, train_config = load_configs()
@@ -124,43 +140,73 @@ def main():
         dataset, [train_size, val_size]
     )
     
-    # Training arguments - disable wandb logging
-    training_args = TrainingArguments(
-        output_dir=train_config['output_dir'],
-        num_train_epochs=train_config['num_epochs'],
-        per_device_train_batch_size=train_config['batch_size'],
-        per_device_eval_batch_size=train_config['batch_size'],
-        learning_rate=float(train_config['learning_rate']),
-        warmup_steps=train_config['warmup_steps'],
-        logging_steps=train_config['logging_steps'],
-        save_steps=500,
-        eval_strategy="steps",
-        eval_steps=500,
-        save_total_limit=2,
-        load_best_model_at_end=True,
-        metric_for_best_model="eval_loss",
-        greater_is_better=False,
-        fp16=train_config.get('use_fp16', False),
-        dataloader_pin_memory=False,
-        remove_unused_columns=False,
-        # Disable wandb logging
-        report_to=[],  # Empty list disables all logging integrations
+    # Create dataloaders with custom collate function
+    train_dataloader = DataLoader(
+        train_dataset, 
+        batch_size=train_config['batch_size'],
+        shuffle=True,
+        collate_fn=custom_collate_fn
     )
     
-    # Create trainer
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        tokenizer=tokenizer,
+    val_dataloader = DataLoader(
+        val_dataset,
+        batch_size=train_config['batch_size'],
+        shuffle=False,
+        collate_fn=custom_collate_fn
     )
     
-    # Start training
-    trainer.train()
+    # Setup optimizer and scheduler
+    optimizer = AdamW(
+        model.parameters(),
+        lr=float(train_config['learning_rate']),
+        weight_decay=0.01
+    )
     
-    # Save the final model
-    trainer.save_model()
+    scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=train_config['num_epochs'] * len(train_dataloader)
+    )
+    
+    # Training loop
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.train()
+    
+    for epoch in range(train_config['num_epochs']):
+        total_loss = 0
+        progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
+        
+        for batch_idx, batch in enumerate(progress_bar):
+            # Move batch to device
+            batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+            
+            # Forward pass
+            optimizer.zero_grad()
+            loss, _ = model(batch)
+            
+            # Backward pass
+            loss.backward()
+            optimizer.step()
+            scheduler.step()
+            
+            total_loss += loss.item()
+            progress_bar.set_postfix({"loss": loss.item()})
+            
+            # Logging
+            if batch_idx % train_config['logging_steps'] == 0:
+                print(f"Epoch {epoch+1}, Batch {batch_idx}, Loss: {loss.item()}")
+            
+            # Save checkpoint
+            if batch_idx % train_config['save_steps'] == 0:
+                model.save_pretrained(f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}")
+                tokenizer.save_pretrained(f"{train_config['output_dir']}/checkpoint-{epoch}-{batch_idx}")
+        
+        # Print epoch summary
+        avg_loss = total_loss / len(train_dataloader)
+        print(f"Epoch {epoch+1} completed. Average Loss: {avg_loss}")
+    
+    # Save final model
+    model.save_pretrained(train_config['output_dir'])
     tokenizer.save_pretrained(train_config['output_dir'])
 
 if __name__ == "__main__":
