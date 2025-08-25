@@ -102,7 +102,7 @@ def setup_model_and_tokenizer(model_config, train_config):
     
     return model, tokenizer
 
-def convert_batch_format(batch):
+def convert_batch_format(batch, tokenizer):
     """
     Convert the batch from standard format to SmolVLA format.
     Standard format: {'pixel_values', 'input_ids', 'attention_mask'}
@@ -127,7 +127,7 @@ def convert_batch_format(batch):
             task_texts.append(text)
         new_batch['task'] = task_texts
     
-    # Add state if available (you might need to modify this based on your dataset)
+   
     if 'state' in batch:
         new_batch['observation.state'] = batch['state']
     else:
@@ -195,7 +195,7 @@ def main():
         for batch_idx, batch in enumerate(progress_bar):
             # Move batch to device and convert format
             batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
-            batch = convert_batch_format(batch)
+            batch = convert_batch_format(batch, tokenizer)
             
             # Forward pass
             optimizer.zero_grad()
