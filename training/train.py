@@ -56,20 +56,28 @@ def setup_model_and_tokenizer(model_config, train_config):
     elif hasattr(model, 'model') and hasattr(model.model, 'resize_token_embeddings'):
         model.model.resize_token_embeddings(len(tokenizer))
     
-    # Setup PEFT if enabled - with a workaround for SmolVLAConfig compatibility
+    # Add a get method to the config to make it compatible with PEFT
+    if not hasattr(model.config, 'get'):
+        def config_get(key, default=None):
+            return getattr(model.config, key, default) if hasattr(model.config, key) else default
+        model.config.get = config_get
+    
+    # Ensure tie_word_embeddings is set
+    if not hasattr(model.config, 'tie_word_embeddings'):
+        model.config.tie_word_embeddings = False
+    
+    # Setup PEFT if enabled
     if train_config.get('use_peft', False):
-        # Add a get method to the config to make it compatible with PEFT
-        if not hasattr(model.config, 'get'):
-            model.config.get = lambda key, default=None: getattr(model.config, key, default) if hasattr(model.config, key) else default
+        # For SmolVLA, we need to target the expert layers, not the VLM layers
+        target_modules = [
+            "action_in_proj", "action_out_proj", "action_time_mlp_in", "action_time_mlp_out",
+            "state_proj", "vlm_with_expert.expert_layers"
+        ]
         
-        # Ensure tie_word_embeddings is set
-        if not hasattr(model.config, 'tie_word_embeddings'):
-            model.config.tie_word_embeddings = False
-            
         peft_config = LoraConfig(
             r=train_config.get('lora_rank', 16),
             lora_alpha=32,
-            target_modules=["q_proj", "v_proj"],
+            target_modules=target_modules,
             lora_dropout=0.05,
             bias="none",
             task_type="CAUSAL_LM"
