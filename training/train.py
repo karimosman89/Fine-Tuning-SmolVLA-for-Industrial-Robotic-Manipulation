@@ -8,6 +8,7 @@ from transformers import (
 from peft import LoraConfig, get_peft_model
 import yaml
 from dataset import VLADataset
+import dataclasses
 
 # Updated import based on the new lerobot structure
 try:
@@ -37,6 +38,12 @@ def load_configs():
 def setup_model_and_tokenizer(model_config, train_config):
     # Load the model using the correct class
     model = SmolVLAPolicy.from_pretrained(model_config['model_name'])
+    
+    # Add to_dict method to config if it doesn't exist
+    if not hasattr(model.config, 'to_dict'):
+        def to_dict(self):
+            return dataclasses.asdict(self)
+        model.config.to_dict = to_dict.__get__(model.config, type(model.config))
     
     # Set dtype after loading if needed
     if train_config.get('use_fp16', False):
@@ -113,7 +120,7 @@ def main():
         dataset, [train_size, val_size]
     )
     
-    # Training arguments
+    # Training arguments - updated to fix the save_steps/eval_steps issue
     training_args = TrainingArguments(
         output_dir=train_config['output_dir'],
         num_train_epochs=train_config['num_epochs'],
@@ -122,6 +129,7 @@ def main():
         learning_rate=float(train_config['learning_rate']),
         warmup_steps=train_config['warmup_steps'],
         logging_steps=train_config['logging_steps'],
+        # Make save_steps a multiple of eval_steps
         save_steps=500,  
         eval_strategy="steps",
         eval_steps=500,
