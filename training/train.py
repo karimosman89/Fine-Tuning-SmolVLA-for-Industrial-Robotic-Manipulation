@@ -25,6 +25,7 @@ os.environ["WANDB_DISABLED"] = "true"
 try:
     from lerobot.policies.smolvla.modeling_smolvla  import SmolVLAPolicy, SmolVLAConfig
     from lerobot.policies.smolvla.configuration_smolvla import SmolVLAConfig as ConfigClass
+    from lerobot.configs.policies import PreTrainedConfig
     from lerobot.policies.normalize import Normalize, Unnormalize
 except ImportError as e:
     print(f"Error importing local modules: {e}")
@@ -61,69 +62,77 @@ def compute_dataset_stats(dataset, num_samples=1000):
     return stats
 
 def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
-    # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
-    vlm_model_name = model_config.get('vlm_model_name', 'HuggingFaceTB/SmolVLM2-500M-Video-Instruct')
+    # Determine the model type and name
+    policy_type = model_config.get("policy_type", "smolvla")
+    model_name = model_config.get("model_name", "lerobot/smolvla_base")
+
+    # Load the policy configuration
+    config = PreTrainedConfig.from_pretrained(
+        policy_type=policy_type, model_name=model_name
+    )
+
+    # Use AutoProcessor for the VLM part of the model
+    vlm_model_name = getattr(config, "vlm_model_name", "HuggingFaceTB/SmolVLM2-500M-Video-Instruct")
     processor = AutoProcessor.from_pretrained(vlm_model_name)
     tokenizer = processor.tokenizer
     
     # Add special tokens for actions
     action_tokens = ["MOVE_TO", "OPEN_GRIPPER", "CLOSE_GRIPPER", "DONE"]
     tokenizer.add_tokens(action_tokens, special_tokens=True)
-    
-    # Load the model using the correct class with dataset statistics
+
+    # Load the model using the configuration object
     try:
-        # Instantiate a SmolVLAConfig object with no arguments
-        config = SmolVLAConfig()
-        
-        # Pass the model_config values directly to the from_pretrained method
         model = SmolVLAPolicy.from_pretrained(
-            model_config['model_name'],
             config=config,
-            
-            vlm_model_name=vlm_model_name,
-            use_peft=train_config.get('use_peft', True),
-            lora_rank=train_config.get('lora_rank', 8)
+            model_name=model_name,
+            vlm_model_name=vlm_model_name,  # Pass it as a keyword argument
+            use_peft=train_config.get("use_peft", True),
+            lora_rank=train_config.get("lora_rank", 8)
         )
     except Exception as e:
         print(f"Failed to load SmolVLA model: {e}")
         print("Falling back to standard transformer model")
         # Fallback to standard transformer
-        model = AutoModelForCausalLM.from_pretrained(model_config['model_name'])
-    
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+
     # Set dtype after loading if needed
-    if train_config.get('use_fp16', False):
+    if train_config.get("use_fp16", False):
         model = model.half()
-    
+
     # Check if the model has a resize_token_embeddings method
-    if hasattr(model, 'resize_token_embeddings'):
+    if hasattr(model, "resize_token_embeddings"):
         model.resize_token_embeddings(len(tokenizer))
-    elif hasattr(model, 'model') and hasattr(model.model, 'resize_token_embeddings'):
+    elif hasattr(model, "model") and hasattr(model.model, "resize_token_embeddings"):
         model.model.resize_token_embeddings(len(tokenizer))
     
     # Setup PEFT if enabled
-    if train_config.get('use_peft', False):
+    if train_config.get("use_peft", False):
         # For SmolVLA, we need to target the expert layers, not the VLM layers
         target_modules = [
-            "action_in_proj", "action_out_proj", "action_time_mlp_in", "action_time_mlp_out",
-            "state_proj", "vlm_with_expert.expert_layers"
+            "action_in_proj",
+            "action_out_proj",
+            "action_time_mlp_in",
+            "action_time_mlp_out",
+            "state_proj",
+            "vlm_with_expert.expert_layers",
         ]
-        
+
         peft_config = LoraConfig(
-            r=train_config.get('lora_rank', 16),
+            r=train_config.get("lora_rank", 16),
             lora_alpha=32,
             target_modules=target_modules,
             lora_dropout=0.05,
             bias="none",
-            task_type="CAUSAL_LM"
+            task_type="CAUSAL_LM",
         )
-        
+
         try:
             model = get_peft_model(model, peft_config)
             model.print_trainable_parameters()
         except Exception as e:
             print(f"PEFT initialization failed: {e}. Continuing without PEFT.")
-            train_config['use_peft'] = False
-    
+            train_config["use_peft"] = False
+
     return model, tokenizer
 
 
