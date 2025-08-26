@@ -72,18 +72,17 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
     
     # Load the model using the correct class with dataset statistics
     try:
-        # Create a copy of the model_config and remove the 'model_name' key
-        config_kwargs = copy.deepcopy(model_config)
-        config_kwargs.pop("model_name", None)
-        config_kwargs.pop("vision_encoder", None)
-        config_kwargs.pop("text_encoder", None)
+        # Instantiate a SmolVLAConfig object with no arguments
+        config = SmolVLAConfig()
         
-        # Try to use the local SmolVLA implementation
-        config = SmolVLAConfig(**config_kwargs)
-        
+        # Pass the model_config values directly to the from_pretrained method
         model = SmolVLAPolicy.from_pretrained(
             model_config['model_name'],
             config=config,
+            image_size=model_config['image_size'],
+            vlm_model_name=vlm_model_name,
+            use_peft=train_config.get('use_peft', True),
+            lora_rank=train_config.get('lora_rank', 8)
         )
     except Exception as e:
         print(f"Failed to load SmolVLA model: {e}")
@@ -126,6 +125,7 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
             train_config['use_peft'] = False
     
     return model, tokenizer
+
 
 def convert_batch_format(batch, tokenizer):
     """
