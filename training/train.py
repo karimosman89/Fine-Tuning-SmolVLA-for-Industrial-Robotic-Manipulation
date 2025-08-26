@@ -68,7 +68,8 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
 
     # Load the policy configuration
     config = PreTrainedConfig.from_pretrained(
-        policy_type=policy_type, model_name=model_name
+        pretrained_name_or_path=model_name, 
+        policy_type=policy_type
     )
 
     # Use AutoProcessor for the VLM part of the model
@@ -85,7 +86,6 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
         model = SmolVLAPolicy.from_pretrained(
             config=config,
             model_name=model_name,
-            vlm_model_name=vlm_model_name,  # Pass it as a keyword argument
             use_peft=train_config.get("use_peft", True),
             lora_rank=train_config.get("lora_rank", 8)
         )
