@@ -79,7 +79,7 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
         model = SmolVLAPolicy.from_pretrained(
             model_config['model_name'],
             config=config,
-            image_size=model_config['image_size'],
+            
             vlm_model_name=vlm_model_name,
             use_peft=train_config.get('use_peft', True),
             lora_rank=train_config.get('lora_rank', 8)
