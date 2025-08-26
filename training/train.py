@@ -52,7 +52,6 @@ def compute_dataset_stats(dataset, num_samples=1000):
     
     # Collect data from sampled indices - use raw data access if available
     for idx in indices:
-        # Try to access raw data without tokenization
         try:
             # If the dataset has a method to get raw data, use it
             if hasattr(dataset, 'get_raw_data'):
@@ -67,39 +66,40 @@ def compute_dataset_stats(dataset, num_samples=1000):
                 states.append(sample['state'].numpy())
             if 'action' in sample:
                 actions.append(sample['action'].numpy())
-        except:
-            # Skip samples that cause errors
+        except Exception as e:
+            # Print the actual error to debug why data is not being loaded
+            print(f"Error loading sample {idx}: {e}")
             continue
     
-    # Compute statistics with keys that match what SmolVLA expects
+    # --- Start of the fix ---
     stats = {}
+    
+    # Initialize all required keys with default values
+    stats['observation.image'] = { 'mean': np.zeros(3), 'std': np.ones(3) }
+    stats['observation.image2'] = stats['observation.image'].copy()
+    stats['observation.image3'] = stats['observation.image'].copy()
+    stats['observation.state'] = { 'mean': np.zeros(7), 'std': np.ones(7) }
+    stats['action'] = { 'mean': np.zeros(7), 'std': np.ones(7) }
+    
+    # Overwrite with computed stats if data is available
     if pixel_values:
         pixel_values = np.stack(pixel_values)
-        # SmolVLA expects these keys for images
-        stats['observation.image'] = {
-            'mean': np.mean(pixel_values, axis=(0, 2, 3)),
-            'std': np.std(pixel_values, axis=(0, 2, 3))
-        }
-        stats['observation.image2'] = stats['observation.image'].copy()
-        stats['observation.image3'] = stats['observation.image'].copy()
+        stats['observation.image']['mean'] = np.mean(pixel_values, axis=(0, 2, 3))
+        stats['observation.image']['std'] = np.std(pixel_values, axis=(0, 2, 3))
     
     if states:
         states = np.stack(states)
-        # SmolVLA expects this key for state
-        stats['observation.state'] = {
-            'mean': np.mean(states, axis=0),
-            'std': np.std(states, axis=0)
-        }
+        stats['observation.state']['mean'] = np.mean(states, axis=0)
+        stats['observation.state']['std'] = np.std(states, axis=0)
     
     if actions:
         actions = np.stack(actions)
-        # SmolVLA expects this key for action
-        stats['action'] = {
-            'mean': np.mean(actions, axis=0),
-            'std': np.std(actions, axis=0)
-        }
+        stats['action']['mean'] = np.mean(actions, axis=0)
+        stats['action']['std'] = np.std(actions, axis=0)
+    # --- End of the fix ---
     
     return stats
+
 
 def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
     # Use AutoProcessor instead of AutoTokenizer for SmolVLA models
@@ -337,5 +337,3 @@ def main():
                 f.write(traceback.format_exc())
         raise e
 
-if __name__ == "__main__":
-    main()
