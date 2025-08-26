@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Virtual Environment
+venv/
+env/
+
+# IDEs
+.idea/
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# dotenv files
+.env
+
+
+# Uploaded files
+/home/ubuntu/upload/
+
+
+
+
+# Browser data directory
+.browser_data_dir/
+
+# Node Version Manager
+.nvm/
+
+
+
+
+.browser_data_dir/
+.nvm/
+
+
