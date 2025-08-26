@@ -22,9 +22,9 @@ os.environ["WANDB_DISABLED"] = "true"
 
 # Import local SmolVLA implementation
 try:
-    from modeling_smolvla import SmolVLAPolicy, SmolVLAConfig
-    from configuration_smolvla import SmolVLAConfig as ConfigClass
-    from normalize import Normalize, Unnormalize
+    from lerobot.policies.smolvla.modeling_smolvla  import SmolVLAPolicy, SmolVLAConfig
+    from lerobot.policies.smolvla.configuration_smolvla import SmolVLAConfig as ConfigClass
+    from lerobot.policies.normalize import Normalize, Unnormalize
 except ImportError as e:
     print(f"Error importing local modules: {e}")
     # Create minimal stubs for compatibility
