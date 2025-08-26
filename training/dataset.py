@@ -37,10 +37,12 @@ class VLADataset(Dataset):
         
         
         state = torch.zeros(7, dtype=torch.float32)
+        action = torch.zeros(7, dtype=torch.float32)
         
         return {
             'pixel_values': image,
             'input_ids': tokens['input_ids'].squeeze(),
             'attention_mask': tokens['attention_mask'].squeeze(),
-            'state': state
+            'state': state,
+            'action': action
         }
