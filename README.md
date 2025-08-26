@@ -1,6 +1,6 @@
-# SmolVLA-450M Industrial Robotics Fine-Tuning
+# SmolVLA Industrial Robotics Fine-Tuning
 
-This project fine-tunes the SmolVLA-450M model for industrial bin-picking tasks.
+This project fine-tunes the SmolVLA model for industrial bin-picking tasks.
 
 ## Project Structure
 
