@@ -35,7 +35,7 @@ class VLADataset(Dataset):
             truncation=True
         )
         
-        
+        # Add a dummy state and action for compatibility with the SmolVLA model
         state = torch.zeros(7, dtype=torch.float32)
         action = torch.zeros(7, dtype=torch.float32)
         
