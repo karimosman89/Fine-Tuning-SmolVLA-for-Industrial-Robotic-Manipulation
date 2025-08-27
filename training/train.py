@@ -59,6 +59,12 @@ def compute_dataset_stats(dataset, num_samples=1000):
         'observation.state': {'mean': [0.0] * 7, 'std': [1.0] * 7},
         'action': {'mean': [0.0] * 7, 'std': [1.0] * 7}
     }
+    
+    # Convert lists to tensors
+    for key in stats:
+        for stat_type in stats[key]:
+            stats[key][stat_type] = torch.tensor(stats[key][stat_type])
+
     return stats
 
 def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
