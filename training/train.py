@@ -24,7 +24,7 @@ os.environ["WANDB_DISABLED"] = "true"
 
 # Import local SmolVLA implementation
 try:
-    from lerobot.policies.smolvla.modeling_smolvla  import SmolVLAPolicy, SmolVLAConfig
+    from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy, SmolVLAConfig
     from lerobot.policies.smolvla.configuration_smolvla import SmolVLAConfig as ConfigClass
     from lerobot.configs.policies import PreTrainedConfig
     from lerobot.policies.normalize import Normalize, Unnormalize
@@ -222,19 +222,23 @@ def main():
             progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
             
             for batch_idx, batch in enumerate(progress_bar):
-                # Move batch to device
-                batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
+                # Move batch to device and ensure correct key names
+                # SmolVLA expects 'observation.images' and 'observation.state', not 'pixel_values'
+                new_batch = {k.replace('pixel_values', 'observation.images'): v for k, v in batch.items()}
                 
+                # Move batch to device
+                new_batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in new_batch.items()}
+
                 # Forward pass
                 optimizer.zero_grad()
                 
                 # Handle different model types
                 if hasattr(model, 'forward'):
                     # SmolVLA model
-                    loss, _ = model(**batch)
+                    loss, _ = model(**new_batch)
                 else:
                     # Standard transformer model
-                    outputs = model(**batch)
+                    outputs = model(**new_batch)
                     loss = outputs.loss if hasattr(outputs, 'loss') else outputs[0]
                 
                 # Backward pass
@@ -279,5 +283,3 @@ def main():
         # Re-raise to fail the step
         raise e
 
-if __name__ == "__main__":
-    main()
