@@ -13,6 +13,7 @@ import numpy as np
 import sys
 import traceback
 import copy
+from transformers import DataCollatorWithPadding
 
 # Add the current directory to Python path to import local modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -140,37 +141,6 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
 
     return model, tokenizer
 
-
-def convert_batch_format(batch, tokenizer):
-    """
-    Convert the batch from standard format to SmolVLA format.
-    """
-    # Create a new batch in SmolVLA format
-    new_batch = {}
-    
-    # Convert images - use the same image for all three image fields
-    if 'pixel_values' in batch:
-        new_batch['observation.image'] = batch['pixel_values']
-        new_batch['observation.image2'] = batch['pixel_values']
-        new_batch['observation.image3'] = batch['pixel_values']
-    
-    # Convert text - use input_ids to reconstruct task text
-    if 'input_ids' in batch:
-        task_texts = []
-        for input_ids in batch['input_ids']:
-            text = tokenizer.decode(input_ids, skip_special_tokens=True)
-            task_texts.append(text)
-        new_batch['task'] = task_texts
-    
-    # Add state if available
-    if 'state' in batch:
-        new_batch['observation.state'] = batch['state']
-    else:
-        batch_size = batch['pixel_values'].shape[0]
-        new_batch['observation.state'] = torch.zeros(batch_size, 7)
-    
-    return new_batch
-
 def main():
     try:
         # Load configs
@@ -212,17 +182,22 @@ def main():
             dataset, [train_size, val_size]
         )
         
+        # Setup data collator for padding
+        data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
+
         # Create dataloaders
         train_dataloader = DataLoader(
             train_dataset, 
             batch_size=train_config['batch_size'],
-            shuffle=True
+            shuffle=True,
+            collate_fn=data_collator
         )
         
         val_dataloader = DataLoader(
             val_dataset,
             batch_size=train_config['batch_size'],
-            shuffle=False
+            shuffle=False,
+            collate_fn=data_collator
         )
         
         # Setup optimizer and scheduler
@@ -247,9 +222,8 @@ def main():
             progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{train_config['num_epochs']}")
             
             for batch_idx, batch in enumerate(progress_bar):
-                # Move batch to device and convert format
+                # Move batch to device
                 batch = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()}
-                batch = convert_batch_format(batch, tokenizer)
                 
                 # Forward pass
                 optimizer.zero_grad()
@@ -257,7 +231,7 @@ def main():
                 # Handle different model types
                 if hasattr(model, 'forward'):
                     # SmolVLA model
-                    loss, _ = model(batch)
+                    loss, _ = model(**batch)
                 else:
                     # Standard transformer model
                     outputs = model(**batch)
