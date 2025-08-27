@@ -68,6 +68,6 @@ class SmolVLAInference:
 
 if __name__ == "__main__":
     # Example usage
-    inference = SmolVLAInference("output", "configs/model_config.yaml")
+    inference = SmolVLAInference("../output", "configs/model_config.yaml")
     actions = inference.infer("test_image.png", "Pick up the bolt and place it on the conveyor belt.")
     print("Safe actions:", actions)
