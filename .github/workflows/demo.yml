@@ -1,10 +1,13 @@
 name: SmolVLA Industrial Robotics Demo
 
 on:
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:  
   schedule:
-    - cron: '0 0 * * 0'  # Run weekly on Sundays
-
+    - cron: '0 0 * * 0'  
+    
+permissions:
+  contents: write
+  
 env:
   PYTHON_VERSION: '3.10'
   MODEL_NAME: 'lerobot/smolvla_base'
