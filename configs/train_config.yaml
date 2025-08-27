@@ -1,0 +1,10 @@
+data_path: "./data/synthetic/metadata.json"
+output_dir: "./output"
+batch_size: 32
+learning_rate: 1e-4
+num_epochs: 10
+use_peft: true
+lora_rank: 16
+warmup_steps: 100
+logging_steps: 50
+save_steps: 500
