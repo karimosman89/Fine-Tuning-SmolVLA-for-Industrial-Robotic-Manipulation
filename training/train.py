@@ -85,7 +85,7 @@ def setup_model_and_tokenizer(model_config, train_config, dataset_stats=None):
     try:
         model = SmolVLAPolicy.from_pretrained(
             config=config,
-            model_name=model_name,
+            pretrained_name_or_path=model_name,
             use_peft=train_config.get("use_peft", True),
             lora_rank=train_config.get("lora_rank", 8)
         )
