@@ -307,6 +307,12 @@ jobs:
         with open('inference_results.txt', 'w') as f:
             f.write('Mock inference results - training failed')
             "
+    - name: Upload demo results  
+      uses: actions/upload-artifact@v4
+      with:
+        name: demo-results
+        path: inference_results.txt 
+        
   create-report:
     needs: run-demo
     runs-on: ubuntu-latest
