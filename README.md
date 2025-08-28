@@ -204,6 +204,6 @@ This project provides a strong foundation for developing a robust vision-languag
 
 ---
 
-**Author:** Manus AI
+**Author:** Karim Osman
 
 
