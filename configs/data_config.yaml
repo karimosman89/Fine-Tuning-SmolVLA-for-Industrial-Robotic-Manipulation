@@ -34,4 +34,4 @@ command_templates:
 
 num_objects: 5
 num_episodes: 10000
-data_dir: "./data/synthetic"
+data_dir: "data/synthetic"
